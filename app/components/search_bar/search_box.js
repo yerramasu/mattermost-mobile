@@ -60,6 +60,7 @@ export default class Search extends Component {
         middleWidth: PropTypes.number,
         editable: PropTypes.bool,
         blurOnSubmit: PropTypes.bool,
+        initialExpanded: PropTypes.bool,
         keyboardShouldPersist: PropTypes.bool,
         value: PropTypes.string,
         positionRightDelete: PropTypes.number,
@@ -80,6 +81,7 @@ export default class Search extends Component {
     static defaultProps = {
         onSelectionChange: () => true,
         onBlur: () => true,
+        initialExpanded: false,
         editable: true,
         blurOnSubmit: false,
         keyboardShouldPersist: false,
@@ -103,18 +105,19 @@ export default class Search extends Component {
         super(props);
 
         this.state = {
-            expanded: false,
+            expanded: props.initialExpanded,
         };
         const {width} = Dimensions.get('window');
         this.contentWidth = width;
         this.middleWidth = width / 2;
 
-        this.iconSearchAnimated = new Animated.Value(this.props.searchIconCollapsedMargin);
-        this.iconDeleteAnimated = new Animated.Value(0);
-        this.inputFocusWidthAnimated = new Animated.Value(this.contentWidth - 10);
-        this.inputFocusPlaceholderAnimated = new Animated.Value(this.props.placeholderCollapsedMargin);
-        this.btnCancelAnimated = new Animated.Value(this.contentWidth);
-        this.shadowOpacityAnimated = new Animated.Value(this.props.shadowOpacityCollapsed);
+        const animatedDimensions = this.getAnimatedDimensions(this.state.expanded);
+        this.searchIconLeftAnimated = new Animated.Value(animatedDimensions.searchIconLeft);
+        this.deleteIconOpacityAnimated = new Animated.Value(animatedDimensions.deleteIconOpacity);
+        this.inputWidthAnimated = new Animated.Value(animatedDimensions.inputWidth);
+        this.inputPaddingLeftAnimated = new Animated.Value(animatedDimensions.inputPaddingLeft);
+        this.cancelButtonLeftAnimated = new Animated.Value(animatedDimensions.cancelButtonLeft);
+        this.shadowOpacityAnimated = new Animated.Value(animatedDimensions.shadowOpacity);
 
         this.placeholder = this.props.placeholder || 'Search';
         this.cancelTitle = this.props.cancelTitle || 'Cancel';
@@ -124,9 +127,9 @@ export default class Search extends Component {
     componentWillReceiveProps(nextProps) {
         if (this.props.value !== nextProps.value) {
             if (nextProps.value) {
-                this.iconDeleteAnimated = new Animated.Value(1);
+                this.deleteIconOpacityAnimated = new Animated.Value(1);
             } else {
-                this.iconDeleteAnimated = new Animated.Value(0);
+                this.deleteIconOpacityAnimated = new Animated.Value(0);
             }
         }
     }
@@ -173,7 +176,7 @@ export default class Search extends Component {
 
     onChangeText = (text) => {
         Animated.timing(
-            this.iconDeleteAnimated,
+            this.deleteIconOpacityAnimated,
             {
                 toValue: (text.length > 0) ? 1 : 0,
                 duration: 200,
@@ -198,7 +201,7 @@ export default class Search extends Component {
 
     onDelete = () => {
         Animated.timing(
-            this.iconDeleteAnimated,
+            this.deleteIconOpacityAnimated,
             {
                 toValue: 0,
                 duration: 200,
@@ -224,107 +227,139 @@ export default class Search extends Component {
         this.props.onSelectionChange(event);
     };
 
+    getAnimatedDimensions = (expanded) => {
+        let dimensions;
+
+        if (expanded) {
+            dimensions = {
+                inputWidth: this.contentWidth - 70,
+                cancelButtonLeft: 10,
+                inputPaddingLeft: this.props.placeholderExpandedMargin,
+                searchIconLeft: this.props.searchIconExpandedMargin,
+                deleteIconOpacity: (this.props.value.length > 0) ? 1 : 0,
+                shadowOpacity: this.props.shadowOpacityExpanded,
+                shadowHeight: this.props.shadowOffsetHeightExpanded,
+            };
+        } else {
+            dimensions = {
+                inputWidth: this.contentWidth - 10,
+                cancelButtonLeft: this.contentWidth,
+                inputPaddingLeft: this.props.placeholderCollapsedMargin,
+                searchIconLeft: this.props.searchIconCollapsedMargin,
+                deleteIconOpacity: 0,
+                shadowOpacity: this.props.shadowOpacityCollapsed,
+                shadowHeight: this.props.shadowOffsetHeightCollapsed,
+            };
+        }
+
+        return dimensions;
+    };
+
     expandAnimation = () => {
         return new Promise((resolve) => {
+            const dimensions = this.getAnimatedDimensions(true);
+
             Animated.parallel([
                 Animated.timing(
-                    this.inputFocusWidthAnimated,
+                    this.inputWidthAnimated,
                     {
-                        toValue: this.contentWidth - 70,
+                        toValue: dimensions.inputWidth,
                         duration: 200,
                     }
                 ).start(),
                 Animated.timing(
-                    this.btnCancelAnimated,
+                    this.cancelButtonLeftAnimated,
                     {
-                        toValue: 10,
+                        toValue: dimensions.cancelButtonLeft,
                         duration: 200,
                     }
                 ).start(),
                 Animated.timing(
-                    this.inputFocusPlaceholderAnimated,
+                    this.inputPaddingLeftAnimated,
                     {
-                        toValue: this.props.placeholderExpandedMargin,
+                        toValue: dimensions.inputPaddingLeft,
                         duration: 200,
                     }
                 ).start(),
                 Animated.timing(
-                    this.iconSearchAnimated,
+                    this.searchIconLeftAnimated,
                     {
-                        toValue: this.props.searchIconExpandedMargin,
+                        toValue: dimensions.searchIconLeft,
                         duration: 200,
                     }
                 ).start(),
                 Animated.timing(
-                    this.iconDeleteAnimated,
+                    this.deleteIconOpacityAnimated,
                     {
-                        toValue: (this.props.value.length > 0) ? 1 : 0,
+                        toValue: dimensions.deleteIconOpacity,
                         duration: 200,
                     }
                 ).start(),
                 Animated.timing(
                     this.shadowOpacityAnimated,
                     {
-                        toValue: this.props.shadowOpacityExpanded,
+                        toValue: dimensions.shadowOpacity,
                         duration: 200,
                     }
                 ).start(),
             ]);
-            this.shadowHeight = this.props.shadowOffsetHeightExpanded;
+            this.shadowHeight = dimensions.shadowHeight;
             resolve();
         });
     };
 
     collapseAnimation = (isForceAnim = false) => {
         return new Promise((resolve) => {
+            const dimensions = this.getAnimatedDimensions(false);
+
             Animated.parallel([
                 ((this.props.keyboardShouldPersist === false) ? Keyboard.dismiss() : null),
                 Animated.timing(
-                    this.inputFocusWidthAnimated,
+                    this.inputWidthAnimated,
                     {
-                        toValue: this.contentWidth - 10,
+                        toValue: dimensions.inputWidth,
                         duration: 200,
                     }
                 ).start(),
                 Animated.timing(
-                    this.btnCancelAnimated,
+                    this.cancelButtonLeftAnimated,
                     {
-                        toValue: this.contentWidth,
+                        toValue: dimensions.cancelButtonLeft,
                         duration: 200,
                     }
                 ).start(),
                 ((this.props.keyboardShouldPersist === false) ?
                     Animated.timing(
-                        this.inputFocusPlaceholderAnimated,
+                        this.inputPaddingLeftAnimated,
                         {
-                            toValue: this.props.placeholderCollapsedMargin,
+                            toValue: dimensions.inputPaddingLeft,
                             duration: 200,
                         }
                     ).start() : null),
                 ((this.props.keyboardShouldPersist === false || isForceAnim === true) ?
                     Animated.timing(
-                        this.iconSearchAnimated,
+                        this.searchIconLeftAnimated,
                         {
-                            toValue: this.props.searchIconCollapsedMargin,
+                            toValue: dimensions.searchIconLeft,
                             duration: 200,
                         }
                     ).start() : null),
                 Animated.timing(
-                    this.iconDeleteAnimated,
+                    this.deleteIconOpacityAnimated,
                     {
-                        toValue: 0,
+                        toValue: dimensions.deleteIconOpacity,
                         duration: 200,
                     }
                 ).start(),
                 Animated.timing(
                     this.shadowOpacityAnimated,
                     {
-                        toValue: this.props.shadowOpacityCollapsed,
+                        toValue: dimensions.shadowOpactity,
                         duration: 200,
                     }
                 ).start(),
             ]);
-            this.shadowHeight = this.props.shadowOffsetHeightCollapsed;
+            this.shadowHeight = dimensions.shadowHeight;
             resolve();
         });
     };
@@ -349,8 +384,8 @@ export default class Search extends Component {
                             this.props.inputHeight && {height: this.props.inputHeight},
                             this.props.inputBorderRadius && {borderRadius: this.props.inputBorderRadius},
                             {
-                                width: this.inputFocusWidthAnimated,
-                                paddingLeft: this.inputFocusPlaceholderAnimated,
+                                width: this.inputWidthAnimated,
+                                paddingLeft: this.inputPaddingLeftAnimated,
                             },
                             restOfInputPropStyles,
                             this.props.shadowVisible && {
@@ -386,7 +421,7 @@ export default class Search extends Component {
                         <Animated.View
                             style={[
                                 styles.iconSearch,
-                                {left: this.iconSearchAnimated},
+                                {left: this.searchIconLeftAnimated},
                             ]}
                         >
                             {this.props.iconSearch}
@@ -399,7 +434,7 @@ export default class Search extends Component {
                                 styles.iconSearchDefault,
                                 this.props.tintColorSearch && {color: this.props.tintColorSearch},
                                 {
-                                    left: this.iconSearchAnimated,
+                                    left: this.searchIconLeftAnimated,
                                     top: middleHeight - 10,
                                 },
                             ]}
@@ -412,7 +447,7 @@ export default class Search extends Component {
                             style={[
                                 styles.iconDelete,
                                 this.props.positionRightDelete && {right: this.props.positionRightDelete},
-                                {opacity: this.iconDeleteAnimated},
+                                {opacity: this.deleteIconOpacityAnimated},
                             ]}
                         >
                             {this.props.iconDelete}
@@ -426,7 +461,7 @@ export default class Search extends Component {
                                     this.props.tintColorDelete && {color: this.props.tintColorDelete},
                                     this.props.positionRightDelete && {right: this.props.positionRightDelete},
                                     {
-                                        opacity: this.iconDeleteAnimated,
+                                        opacity: this.deleteIconOpacityAnimated,
                                     },
                                 ]}
                             />
@@ -438,7 +473,7 @@ export default class Search extends Component {
                         style={[
                             styles.cancelButton,
                             this.props.cancelButtonStyle && this.props.cancelButtonStyle,
-                            {left: this.btnCancelAnimated},
+                            {left: this.cancelButtonLeftAnimated},
                         ]}
                     >
                         <Text
