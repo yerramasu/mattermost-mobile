@@ -4,7 +4,6 @@
 import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 import {
-    Dimensions,
     TouchableHighlight,
     TouchableOpacity,
     View,
@@ -29,10 +28,13 @@ let PostAddChannelMember;
 let PostBodyAdditionalContent;
 let Reactions;
 
+const SHOW_MORE_HEIGHT = 60;
+
 export default class PostBody extends PureComponent {
     static propTypes = {
         canDelete: PropTypes.bool,
         channelIsReadOnly: PropTypes.bool.isRequired,
+        deviceHeight: PropTypes.number.isRequired,
         fileIds: PropTypes.array,
         hasBeenDeleted: PropTypes.bool,
         hasBeenEdited: PropTypes.bool,
@@ -46,6 +48,7 @@ export default class PostBody extends PureComponent {
         isReplyPost: PropTypes.bool,
         isSearchResult: PropTypes.bool,
         isSystemMessage: PropTypes.bool,
+        metadata: PropTypes.object,
         managedConfig: PropTypes.object,
         message: PropTypes.string,
         navigator: PropTypes.object.isRequired,
@@ -75,6 +78,17 @@ export default class PostBody extends PureComponent {
         intl: intlShape.isRequired,
     };
 
+    static getDerivedStateFromProps(nextProps, prevState) {
+        const maxHeight = (nextProps.deviceHeight * 0.6) + SHOW_MORE_HEIGHT;
+        if (maxHeight !== prevState.maxHeight) {
+            return {
+                maxHeight,
+            };
+        }
+
+        return null;
+    }
+
     state = {
         isLongPost: false,
     };
@@ -89,13 +103,11 @@ export default class PostBody extends PureComponent {
 
     measurePost = (event) => {
         const {height} = event.nativeEvent.layout;
-        const {height: deviceHeight} = Dimensions.get('window');
-        const {showLongPost} = this.props;
+        const {deviceHeight, showLongPost} = this.props;
 
         if (!showLongPost && height >= (deviceHeight * 1.2)) {
             this.setState({
                 isLongPost: true,
-                maxHeight: (deviceHeight * 0.6),
             });
         }
     };
@@ -216,7 +228,7 @@ export default class PostBody extends PureComponent {
         }
 
         let attachments;
-        if (fileIds.length > 0) {
+        if (fileIds.length) {
             if (!FileAttachmentList) {
                 FileAttachmentList = require('app/components/file_attachment_list').default;
             }
@@ -236,7 +248,11 @@ export default class PostBody extends PureComponent {
     }
 
     renderPostAdditionalContent = (blockStyles, messageStyle, textStyles) => {
-        const {isReplyPost, message, navigator, onHashtagPress, onPermalinkPress, postId, postProps} = this.props;
+        const {isReplyPost, message, navigator, onHashtagPress, onPermalinkPress, postId, postProps, metadata} = this.props;
+
+        if (metadata && !metadata.embeds) {
+            return null;
+        }
 
         if (!PostBodyAdditionalContent) {
             PostBodyAdditionalContent = require('app/components/post_body_additional_content').default;
@@ -248,6 +264,7 @@ export default class PostBody extends PureComponent {
                 blockStyles={blockStyles}
                 navigator={navigator}
                 message={message}
+                metadata={metadata}
                 postId={postId}
                 postProps={postProps}
                 textStyles={textStyles}
@@ -295,6 +312,7 @@ export default class PostBody extends PureComponent {
             isSearchResult,
             isSystemMessage,
             message,
+            metadata,
             navigator,
             onFailedPostPress,
             onHashtagPress,
@@ -357,12 +375,13 @@ export default class PostBody extends PureComponent {
             messageComponent = (
                 <View style={style.row}>
                     <View
-                        style={[style.flex, (isPendingOrFailedPost && style.pendingPost), (isLongPost && {maxHeight, overflow: 'hidden'})]}
+                        style={[style.flex, (isPendingOrFailedPost && style.pendingPost), (isLongPost && {maxHeight})]}
                         removeClippedSubviews={isLongPost}
                     >
                         <Markdown
                             baseTextStyle={messageStyle}
                             blockStyles={blockStyles}
+                            imageMetadata={metadata?.images}
                             isEdited={hasBeenEdited}
                             isReplyPost={isReplyPost}
                             isSearchResult={isSearchResult}
@@ -434,6 +453,7 @@ const getStyleSheet = makeStyleSheetFromTheme((theme) => {
     return {
         flex: {
             flex: 1,
+            overflow: 'hidden',
         },
         row: {
             flexDirection: 'row',
