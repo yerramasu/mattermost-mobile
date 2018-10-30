@@ -77,7 +77,7 @@ NSString* const NotificationClearAction = @"clear";
     UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
     [center getDeliveredNotificationsWithCompletionHandler:^(NSArray<UNNotification *> * _Nonnull notifications) {
       NSMutableArray<NSString *> *notificationIds = [NSMutableArray new];
-      
+
       for (UNNotification *prevNotification in notifications) {
         UNNotificationRequest *notificationRequest = [prevNotification request];
         UNNotificationContent *notificationContent = [notificationRequest content];
@@ -109,7 +109,7 @@ NSString* const NotificationClearAction = @"clear";
   UIApplicationState state = [UIApplication sharedApplication].applicationState;
   NSString* action = [userInfo objectForKey:@"type"];
   NSString* channelId = [userInfo objectForKey:@"channel_id"];
-  
+
   if (action && [action isEqualToString: NotificationClearAction]) {
     // If received a notification that a channel was read, remove all notifications from that channel (only with app in foreground/background)
     [self cleanNotificationsFromChannel:channelId andUpdateBadge:NO];
