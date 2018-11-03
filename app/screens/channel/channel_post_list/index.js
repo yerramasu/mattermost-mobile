@@ -11,7 +11,6 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 
 import {loadPostsIfNecessaryWithRetry, loadThreadIfNecessary, increasePostVisibility, refreshChannelWithRetry} from 'app/actions/views/channel';
-import {recordLoadTime} from 'app/actions/views/root';
 
 import ChannelPostList from './channel_post_list';
 
@@ -39,7 +38,6 @@ function mapDispatchToProps(dispatch) {
             loadThreadIfNecessary,
             increasePostVisibility,
             selectPost,
-            recordLoadTime,
             refreshChannelWithRetry,
         }, dispatch),
     };

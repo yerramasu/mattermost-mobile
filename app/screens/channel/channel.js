@@ -40,11 +40,11 @@ const {
 } = ViewTypes;
 
 let ClientUpgradeListener;
-
 export default class Channel extends PureComponent {
     static propTypes = {
         actions: PropTypes.shape({
             loadChannelsIfNecessary: PropTypes.func.isRequired,
+            loadPostsIfNecessaryWithRetry: PropTypes.func.isRequired,
             loadProfilesAndTeamMembersForDMSidebar: PropTypes.func.isRequired,
             selectDefaultTeam: PropTypes.func.isRequired,
             selectInitialChannel: PropTypes.func.isRequired,
@@ -79,6 +79,12 @@ export default class Channel extends PureComponent {
     componentWillMount() {
         EventEmitter.on('leave_team', this.handleLeaveTeam);
 
+        this.networkListener = networkConnectionListener(this.handleConnectionChange);
+
+        if (this.props.currentChannelId) {
+            this.props.actions.loadPostsIfNecessaryWithRetry(this.props.currentChannelId);
+        }
+
         if (this.props.currentTeamId) {
             this.loadChannels(this.props.currentTeamId);
         } else {
@@ -106,7 +112,7 @@ export default class Channel extends PureComponent {
         }
 
         if (nextProps.currentTeamId && this.props.currentTeamId !== nextProps.currentTeamId) {
-            this.loadChannels(nextProps.currentTeamId);
+            this.loadChannels(nextProps.currentTeamId, true);
         }
 
         if (LocalConfig.EnableMobileClientUpgrade && !ClientUpgradeListener) {
@@ -227,7 +233,7 @@ export default class Channel extends PureComponent {
         this.props.actions.selectDefaultTeam();
     };
 
-    loadChannels = (teamId) => {
+    loadChannels = (teamId, shouldLoadPosts = false) => {
         const {
             loadChannelsIfNecessary,
             loadProfilesAndTeamMembersForDMSidebar,
@@ -236,9 +242,8 @@ export default class Channel extends PureComponent {
 
         loadChannelsIfNecessary(teamId).then(() => {
             loadProfilesAndTeamMembersForDMSidebar(teamId);
-            selectInitialChannel(teamId);
-        }).catch(() => {
-            selectInitialChannel(teamId);
+        }).finally(() => {
+            selectInitialChannel(teamId, shouldLoadPosts);
         });
     };
 
@@ -294,7 +299,6 @@ export default class Channel extends PureComponent {
 
         const loaderDimensions = this.channelLoaderDimensions();
 
-        // console.warn('height', height, Date.now())
         return (
             <MainSidebar
                 ref={this.channelSidebarRef}
