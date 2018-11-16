@@ -5,7 +5,6 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 import {
     Dimensions,
-    TouchableHighlight,
     TouchableOpacity,
     View,
 } from 'react-native';
@@ -38,6 +37,7 @@ export default class PostBody extends PureComponent {
         hasBeenEdited: PropTypes.bool,
         hasReactions: PropTypes.bool,
         highlight: PropTypes.bool,
+        highlightExtra: PropTypes.bool,
         isFailed: PropTypes.bool,
         isFlagged: PropTypes.bool,
         isPending: PropTypes.bool,
@@ -288,6 +288,7 @@ export default class PostBody extends PureComponent {
             hasBeenDeleted,
             hasBeenEdited,
             highlight,
+            highlightExtra,
             isFailed,
             isPending,
             isPostAddChannelMember,
@@ -316,20 +317,13 @@ export default class PostBody extends PureComponent {
         let messageComponent;
         if (hasBeenDeleted) {
             messageComponent = (
-                <TouchableHighlight
-                    onHideUnderlay={this.handleHideUnderlay}
-                    onPress={onPress}
-                    onShowUnderlay={this.handleShowUnderlay}
-                    underlayColor='transparent'
-                >
-                    <View style={style.row}>
-                        <FormattedText
-                            style={messageStyle}
-                            id='post_body.deleted'
-                            defaultMessage='(message deleted)'
-                        />
-                    </View>
-                </TouchableHighlight>
+                <View style={style.row}>
+                    <FormattedText
+                        style={messageStyle}
+                        id='post_body.deleted'
+                        defaultMessage='(message deleted)'
+                    />
+                </View>
             );
             body = (<View>{messageComponent}</View>);
         } else if (isPostAddChannelMember) {
@@ -337,21 +331,19 @@ export default class PostBody extends PureComponent {
         } else if (postType === Posts.POST_TYPES.COMBINED_USER_ACTIVITY) {
             const {allUserIds, allUsernames, messageData} = postProps.user_activity;
             messageComponent = (
-                <TouchableOpacity onLongPress={this.showPostOptions}>
-                    <View style={style.row}>
-                        <View style={style.flex}>
-                            <CombinedSystemMessage
-                                allUserIds={allUserIds}
-                                allUsernames={allUsernames}
-                                linkStyle={textStyles.link}
-                                messageData={messageData}
-                                navigator={navigator}
-                                textStyles={textStyles}
-                                theme={theme}
-                            />
-                        </View>
+                <View style={style.row}>
+                    <View style={style.flex}>
+                        <CombinedSystemMessage
+                            allUserIds={allUserIds}
+                            allUsernames={allUsernames}
+                            linkStyle={textStyles.link}
+                            messageData={messageData}
+                            navigator={navigator}
+                            textStyles={textStyles}
+                            theme={theme}
+                        />
                     </View>
-                </TouchableOpacity>
+                </View>
             );
         } else if (message.length) {
             messageComponent = (
@@ -380,35 +372,27 @@ export default class PostBody extends PureComponent {
 
         if (!hasBeenDeleted) {
             body = (
-                <TouchableHighlight
-                    onHideUnderlay={this.handleHideUnderlay}
-                    onPress={onPress}
-                    onLongPress={this.showPostOptions}
-                    onShowUnderlay={this.handleShowUnderlay}
-                    underlayColor='transparent'
-                >
-                    <View style={style.messageBody}>
-                        <View onLayout={this.measurePost}>
-                            {messageComponent}
-                            {isLongPost &&
-                            <ShowMoreButton
-                                highlight={highlight}
-                                onPress={this.openLongPost}
-                            />
-                            }
-                        </View>
-                        {this.renderPostAdditionalContent(blockStyles, messageStyle, textStyles)}
-                        {this.renderFileAttachments()}
-                        {this.renderReactions()}
+                <View style={style.messageBody}>
+                    <View onLayout={this.measurePost}>
+                        {messageComponent}
+                        {isLongPost &&
+                        <ShowMoreButton
+                            highlight={highlight}
+                            onPress={this.openLongPost}
+                        />
+                        }
                     </View>
-                </TouchableHighlight>
+                    {this.renderPostAdditionalContent(blockStyles, messageStyle, textStyles)}
+                    {this.renderFileAttachments()}
+                    {this.renderReactions()}
+                </View>
             );
         }
 
         return (
             <View style={style.messageContainerWithReplyBar}>
                 <View style={replyBarStyle}/>
-                <View style={[style.flex, style.row]}>
+                <View style={[style.flex, style.row, (highlightExtra && style.highlightExtra)]}>
                     <View style={style.flex}>
                         {body}
                     </View>
@@ -460,6 +444,9 @@ const getStyleSheet = makeStyleSheetFromTheme((theme) => {
         },
         systemMessage: {
             opacity: 0.6,
+        },
+        highlightExtra: {
+            paddingBottom: 5,
         },
     };
 });
